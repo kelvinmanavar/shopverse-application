@@ -1,0 +1,15 @@
+# Prod environment (prod EKS cluster). Pipeline adds images and infra values.
+frontend:
+  replicas: 2
+
+backend:
+  replicas: 3
+  frontendOrigin: https://kmanavar.online
+
+secrets:
+  jwt:
+    secretName: shopverse/prod/jwt-secret
+
+httpRoute:
+  hostnames:
+    - kmanavar.online

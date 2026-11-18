@@ -1,0 +1,62 @@
+# One-time bootstrap, applied by a cluster admin on EACH cluster (dev and prod):
+#   kubectl apply -f k8s/bootstrap/deployer-rbac.yaml
+#
+# The GitHub OIDC deploy role is mapped to the Kubernetes group
+# "shopverse-deployers" through an EKS access entry (see docs/cicd.md).
+# The group can only manage what the Helm chart deploys, and only in the
+# "shopverse" namespace.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: shopverse
+  labels:
+    app: shopverse
+    # Lets a shared Gateway restrict allowedRoutes to labelled namespaces.
+    shopverse.io/gateway-access: "true"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: shopverse-deployer
+  namespace: shopverse
+rules:
+  # Resources rendered by the chart. Secrets are also where Helm stores release state.
+  - apiGroups: [""]
+    resources: [configmaps, secrets, services, serviceaccounts]
+    verbs: [get, list, watch, create, update, patch, delete]
+  - apiGroups: [apps]
+    resources: [deployments]
+    verbs: [get, list, watch, create, update, patch, delete]
+  - apiGroups: [policy]
+    resources: [poddisruptionbudgets]
+    verbs: [get, list, watch, create, update, patch, delete]
+  - apiGroups: [gateway.networking.k8s.io]
+    resources: [httproutes]
+    verbs: [get, list, watch, create, update, patch, delete]
+  - apiGroups: [external-secrets.io]
+    resources: [externalsecrets, secretstores]
+    verbs: [get, list, watch, create, update, patch, delete]
+  # Read-only, for helm --wait and failure diagnostics.
+  - apiGroups: [apps]
+    resources: [replicasets]
+    verbs: [get, list, watch]
+  - apiGroups: [""]
+    resources: [pods, pods/log, events, endpoints]
+    verbs: [get, list, watch]
+  - apiGroups: [discovery.k8s.io]
+    resources: [endpointslices]
+    verbs: [get, list, watch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: shopverse-deployer
+  namespace: shopverse
+subjects:
+  - apiGroup: rbac.authorization.k8s.io
+    kind: Group
+    name: shopverse-deployers
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: shopverse-deployer

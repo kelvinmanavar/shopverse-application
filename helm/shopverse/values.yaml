@@ -1,0 +1,88 @@
+# Defaults shared by all environments.
+# Per-environment overrides live in values-dev.yaml / values-prod.yaml.
+# Infra-generated values (RDS endpoint, secret names, role ARNs, Gateway ref)
+# are passed by the pipeline from GitHub Environment variables.
+
+# ──────────────────────────────────────
+# Frontend (React + nginx)
+# ──────────────────────────────────────
+frontend:
+  deploymentName: shopverse-frontend
+  replicas: 2
+  image: ""            # set by pipeline: <registry>/<repo>:<git-sha>
+  serviceName: shopverse-frontend-svc
+  servicePort: 80
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      memory: 128Mi
+
+# ──────────────────────────────────────
+# Backend (Go API)
+# ──────────────────────────────────────
+backend:
+  deploymentName: shopverse-backend
+  replicas: 2
+  image: ""            # set by pipeline: <registry>/<repo>:<git-sha>
+  # Must stay "shopverse-backend-svc": frontend/nginx.conf proxies to it.
+  serviceName: shopverse-backend-svc
+  servicePort: 8080
+  # CORS origin, e.g. https://kmanavar.online
+  frontendOrigin: ""
+  # Annotations on the Deployment object, e.g. for Stakater Reloader:
+  #   secret.reloader.stakater.com/reload: shopverse-secret
+  deploymentAnnotations: {}
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      memory: 256Mi
+
+# ──────────────────────────────────────
+# Database (Amazon RDS for MySQL)
+# ──────────────────────────────────────
+database:
+  host: ""             # RDS endpoint, set by pipeline (vars.DB_HOST)
+  port: "3306"
+  name: shopverse
+
+# ──────────────────────────────────────
+# Secrets (AWS Secrets Manager via External Secrets Operator)
+# ──────────────────────────────────────
+secrets:
+  # Name of the Kubernetes Secret that ESO creates and the backend reads.
+  targetName: shopverse-secret
+  refreshInterval: 1h
+  region: ""           # set by pipeline (vars.AWS_REGION)
+  serviceAccount:
+    name: shopverse-secrets
+    roleArn: ""        # IRSA role allowed to read the secrets below (vars.SECRETS_ROLE_ARN)
+  rds:
+    secretName: ""     # RDS-managed master secret, e.g. rds!db-xxxx (vars.RDS_SECRET_NAME)
+    usernameProperty: username
+    passwordProperty: password
+  jwt:
+    secretName: ""     # e.g. shopverse/prod/jwt-secret
+    property: ""       # empty = use the whole SecretString
+
+# ──────────────────────────────────────
+# Gateway API routing
+# ──────────────────────────────────────
+httpRoute:
+  enabled: true
+  name: shopverse
+  hostnames: []
+  gateway:
+    name: ""           # set by pipeline (vars.GATEWAY_NAME)
+    namespace: ""      # set by pipeline (vars.GATEWAY_NAMESPACE)
+    sectionName: ""    # optional listener name, e.g. "https"
+
+# ──────────────────────────────────────
+# Availability
+# ──────────────────────────────────────
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1

@@ -1,0 +1,15 @@
+# Dev environment (dev EKS cluster). Pipeline adds images and infra values.
+frontend:
+  replicas: 1
+
+backend:
+  replicas: 1
+  frontendOrigin: https://dev.kmanavar.online
+
+secrets:
+  jwt:
+    secretName: shopverse/dev/jwt-secret
+
+httpRoute:
+  hostnames:
+    - dev.kmanavar.online
